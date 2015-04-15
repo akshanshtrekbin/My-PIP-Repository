@@ -1,0 +1,43 @@
+<apex:page standardController="Opportunity" extensions="TBN_OpportunityProductController" sidebar="false" action="{!onPageLoad}">
+	<apex:form >
+			<apex:pageblock >
+				<center><h6>Questions and Answers related to products</h6></center>
+					<apex:outputText value="{!AnsweredQuestions}">Answered Questions : <nbsp></nbsp></apex:outputText>
+						<br></br>
+					<apex:outputText value="{!UnansweredQuestions}">Unanswered Questions : <nbsp></nbsp></apex:outputText>
+						<hr/>
+					<apex:pageBlockButtons location="bottom">
+						<apex:commandButton value="Save" action="{!save}" />
+					</apex:pageBlockButtons>
+			</apex:pageblock>
+<!-- 		<center> -->
+<!-- 			<apex:commandbutton value="Confirm Save" action="{!save}" /> -->
+<!-- 		</center> -->
+		
+		
+<!-- 		<apex:repeat value="{!lstWrapperProducts}" var="product">   -->
+<!-- 			<apex:pageblock > -->
+<!-- 				<apex:outputText value="{!product.objProduct.Name}"> -->
+<!-- 					<apex:repeat rendered="{!product.mapProductIdToListOfQustions" value="{!product.mapProductIdToListOfQustions[product__c]}" var="Questions"> -->
+<!-- 						<apex:outputField value="{!}">	 -->
+<!-- 					</apex:repeat> -->
+<!-- 				<apex:pageBlockSection columns="1"> -->
+<!-- 						<apex:pageBlockSectionItem > -->
+<!-- 						<apex:outputField value="{!Ans.Product__r.Name}" />    -->
+<!-- 						<apex:inputField value="{!qus.Answer__c}" style="resize: none;" rendered="{!qus.Question_Type__c == 'TextArea'}"/> -->
+<!-- 						<apex:inputField value="{!qus.Answer__c}" style="resize: none;" rendered="{!qus.Question_Type__c == null}"/> -->
+						
+<!-- 						<apex:selectRadio rendered="{!qus.Question_Type__c == 'Radio'}" label="Answer For Radio" value="{!qus.Answer__c}" > -->
+<!-- 	                    	<apex:selectOptions value="{!IsSelectedRadio}"/>         -->
+<!-- 	                	</apex:selectRadio> -->
+	                	
+<!-- 	                	<apex:selectList rendered="{!qus.Question_Type__c == 'Picklist'}" multiselect="false" size="1" value="{!qus.Answer_For_Picklist__c}">   -->
+<!-- 			            	<apex:selectOptions value="{!OptionList}"/> -->
+<!-- 			        	</apex:selectList>   -->
+	                	   
+<!-- 					</apex:pageBlockSectionItem> -->
+<!-- 				</apex:pageBlockSection>  -->
+<!-- 			</apex:pageblock> -->
+<!-- 		</apex:repeat> -->
+	</apex:form>
+</apex:page>

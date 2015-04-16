@@ -9,20 +9,25 @@
 public with sharing class TBN_OpportunityProductController 
 {
     /* Start - Page Variables */
-    public list<WrapperProduct> lstWrapperProduct  {get;set;} // The list of wrapper class for products
-    public map<Id, Product2> mapProductIdToProduct = new map<Id, Product2>();
-    public List<Question__c> lstQuestions   {get;set;} // Thi list is used to store Questions and answers. 
-    public list<Answer__c> lstAnswers		{get;set;}
+    
+    public list<WrapperQuestionAnswer> lstWrapperQA  {get;set;} // The list of wrapper class for products
+    public list<WrapperProduct> lstWrapperProduct	 {get;set;}	
     public Integer AnsweredQuestions    {get;set;}
     public Integer UnansweredQuestions  {get;set;}  
     /* End - Page Variables */
     
     /* Start - Class Variables*/
+    list<Question__c> lstQuestions = new list<Question__c>();
+    map<Id,Id> mapProductIdToPGId = new map<Id,Id>();
+    map<Id,List<Id>> mapPGIdTolstOfPrdId = new map<Id,List<Id>>();
+    map<Id,String> mapProdIdToProdName = new map<Id,String>();
+    map<Id,List<Id>> mapPGIdTolstOfQusId = new map<Id,List<Id>>();
+    map<Id,Question__c> mapQuestionIdToQuestion = new map<Id, Question__c>();
+    map<Id,list<WrapperQuestionAnswer>> mapPrdIdTolstWrapperQA = new map<Id,list<WrapperQuestionAnswer>>();
+    set<Id> setProductId = new set<Id>();
+    
     Id opportunityId;
-    map<Id, Question__c> mapQuestionIdToQuestion = new map<Id, Question__c>();
     List<Id> lstProductId = new List<Id>();
-    List<Id> lstQuestionId = new List<Id>();
-    List<Id> lstProductGroupId = new List<Id>();
     list<Answer__c> lstAnswerToInsert = new list<Answer__c>(); 
     Map<Id,Id> mapPGIdToPrdId = new Map<Id,Id>();
     
@@ -34,26 +39,40 @@ public with sharing class TBN_OpportunityProductController
     */
     public class WrapperProduct
     {
-        public Product2 objProduct	    								{get;set;}
-        public map<Id, List<Question__c>> mapProductIdToListOfQustions	{get;set;}
-    	public map<Id, Answer__c> mapQuestionIdToAnswer					{get;set;}
+		public String strProductName	    							{get;set;}
+       	public List<WrapperQuestionAnswer> lstWrapperQuesAns			{get;set;}
         
         /* Start - Constructor */
-        public WrapperProduct(Product2 objProduct , map<Id, List<Question__c>> mapProductIdToListOfQustions , map<Id, Answer__c> mapQuestionIdToAnswer)
+        public WrapperProduct(String strProductName, List<WrapperQuestionAnswer> lstWrapperQuesAns)
         {
-            this.objProduct = objProduct;
-            this.mapProductIdToListOfQustions = mapProductIdToListOfQustions;
-            this.mapQuestionIdToAnswer = mapQuestionIdToAnswer;
+            this.strProductName = strProductName;
+            this.lstWrapperQuesAns = lstWrapperQuesAns;
         }
         /* End - Constructor */
     }
+    
+    public class WrapperQuestionAnswer
+    {
+        public Question__c objQuestion	    							{get;set;}
+        public Answer__c objAnswer	    								{get;set;}
+        
+        /* Start - Constructor */
+        public WrapperQuestionAnswer(Question__c objQuestion , Answer__c objAnswer)
+        {
+            this.objQuestion = objQuestion;
+            this.objAnswer = objAnswer;
+        }
+        /* End - Constructor */
+    }
+    
+    
     
     /* Start - Constructor */
     public TBN_OpportunityProductController(ApexPages.StandardController stdController)
     {
         opportunityId = stdController.getId();
-        lstAnswers = new List<Answer__c>();
-        lstWrapperProduct = new List<WrapperProduct>();
+        lstWrapperQA = new List<WrapperQuestionAnswer>();
+        lstWrapperProduct = new list<WrapperProduct>();
         initialize();
         ShowQuestions();
     }
@@ -66,7 +85,6 @@ public with sharing class TBN_OpportunityProductController
     */
     private void initialize()
     {
-        lstQuestions = new List<Question__c>();
         AnsweredQuestions = 0;
         UnansweredQuestions= 0;
     }  
@@ -78,41 +96,86 @@ public with sharing class TBN_OpportunityProductController
     */
     public void ShowQuestions()
     {
-        for(OpportunityLineItem objOLI : [SELECT Product2Id,Product2.Id ,  Product2.Product_Group__c FROM OpportunityLineItem WHERE OpportunityId =: opportunityId])
+        for(OpportunityLineItem objOLI : [SELECT Product2Id, Product2.Name, Product2.Product_Group__c FROM OpportunityLineItem WHERE OpportunityId =: opportunityId])
         {
-            lstProductGroupId.add(objOLI.Product2.Product_Group__c);
-            lstProductId.add(objOLI.Product2.Id);
+            mapProductIdToPGId.put(objOLI.Product2Id,objOLI.Product2.Product_Group__c);
+            
+            mapProdIdToProdName.put(objOLI.Product2Id,objOLI.Product2.Name);
+            if(mapPGIdTolstOfPrdId.containsKey(objOLI.Product2.Product_Group__c))
+            {
+            	mapPGIdTolstOfPrdId.get(objOLI.Product2.Product_Group__c).add(objOLI.Product2Id);
+            }
+            else
+            {
+            	mapPGIdTolstOfPrdId.put(objOLI.Product2.Product_Group__c , new list<Id>{objOLI.Product2Id});
+            }
+        }
+        
+        for(Question__c objQuestion : [SELECT Questions_for_Picklist__c, Question__c, Question_Type__c, Product_Group__c, Id From Question__c WHERE Product_Group__c IN:mapPGIdTolstOfPrdId.keyset()])
+        {
+        	mapQuestionIdToQuestion.put(objQuestion.Id,objQuestion);
+        }
+        
+        /*for(Product_Group__c objPrdGrp : [SELECT Id, (SELECT Id, Question_Type__c, Question__c, Questions_for_Picklist__c From Questions__r) From Product_Group__c where Id IN:mapPGIdTolstOfPrdId])
+        {
+        	lstQuestions.add(objPrdGrp.Questions__r);
+        	if(mapPGIdTolstOfQusId.containsKey(objPrdGrp.Id))
+        	{
+        		mapPGIdTolstOfQusId.get(objPrdGrp.Id).add(objPrdGrp.Questions__r);	
+        	}
+        	else
+        	{
+        		mapPGIdTolstOfQusId.put(objPrdGrp.Id , new list<Id>(objPrdGrp.Questions__r));
+        	}
+        }*/
+        
+        
+        for(Answer__c objAnswer : [SELECT Id,
+										  Question__c, 
+                                          Product__c,
+                                          Answers__c,
+                                          Opportunity__c 
+                                     From Answer__c 
+                                    WHERE Opportunity__c =: opportunityId
+                                      AND Product__c IN: mapProductIdToPGId.keyset()])
+        {
+	    	for(Id productId : mapProductIdToPGId.keyset())
+	    	{
+				if(objAnswer.Product__c == productId )
+				{	    		
+	        		lstWrapperQA.add(new WrapperQuestionAnswer(mapQuestionIdToQuestion.get(objAnswer.Question__c),objAnswer));	
+					mapPrdIdTolstWrapperQA.put(objAnswer.Product__c,lstWrapperQA);
+				}
+				else
+					lstWrapperQA.clear();	
+	    	}	/*if(mapPrdIdTolstWrapperQA.containsKey(objAnswer.Product__c))
+				{
+					lstWrapperQA.add(new WrapperQuestionAnswer(mapQuestionIdToQuestion.get(objAnswer.Question__c),objAnswer));	
+					mapPrdIdTolstWrapperQA.get(objAnswer.Product__c).addAll(lstWrapperQA);
+				}
+				else
+				{
+					mapPrdIdTolstWrapperQA.put(objAnswer.Product__c , new lstWrapperQA<WrapperQuestionAnswer>(mapQuestionIdToQuestion.get(objAnswer.Question__c),objAnswer));  
+				}*/
+        }
+        
+        
+        for(Id ProductId : mapProductIdToPGId.keyset())
+        {
+        	mapProdIdToProdName.get(ProductId);
+        	lstWrapperProduct.add(new WrapperProduct(mapProdIdToProdName.get(ProductId), mapPrdIdTolstWrapperQA.get(ProductId)));
+        	system.debug('==lstWrapperProduct='+lstWrapperProduct);
         }
 		
-		for(Product2 objProduct : [SELECT Id, Name, Product_Group__c  FROM Product2 WHERE Id IN: lstProductId])
+		for(Product2 objProduct : [SELECT Id, Name, Product_Group__c  FROM Product2 WHERE Id IN: mapProductIdToPGId.keyset()])
 		{
-			mapProductIdToProduct.put(objProduct.Id, objProduct);
 			mapPGIdToPrdId.put(objProduct.Product_Group__c, objProduct.Id);
 		}
-        for(Question__c objQus : [Select Id, Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: lstProductGroupId])
+		
+        for(Question__c objQus : [Select Id, Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: mapPGIdTolstOfPrdId.keyset()])
         {
             lstQuestions.add(objQus);
             mapQuestionIdToQuestion.put(objQus.Id , objQus);
-        }
-        
-        //map<Id , Question__c> mapIdToQuestions = new map<Id , Question__c>([Select Id, Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: lstProductGroupId]);
-        //map<Question__c , Answer__c> mapQuestionToAnswer = new map<Question__c , Answer__c>();
-        
-        for(Answer__c objAnswer : [SELECT Question__c, 
-        								  Question__r.Question__c,
-        								  Question__r.Question_Type__c,
-                                          Product__c,
-                                          Product__r.Name, 
-                                          Opportunity__r.Name, 
-                                          Answers__c 
-                                     From Answer__c 
-                                     WHERE Opportunity__c =: opportunityId
-                                       AND Product__c IN: lstProductId
-                                       AND Question__c IN: lstQuestions])
-        {
-            //mapQuestionToAnswer.put(mapIdToQuestions.get(objAnswer.Question__c) , objAnswer);
-            lstAnswers.add(objAnswer);
-            //lstWrapperProduct.add(new WrapperProduct(mapProductIdToProduct.get(objAnswer.Product__c), (mapProductIdToListOfQustions.containsKey(objAnswer.Product__c)) ? (mapProductIdToListOfQustions.get(objAnswer.Product__c).add(mapQuestionIdToQuestion.get(objAnswer.Question__c))) : (mapProductIdToListOfQustions.put(objAnswer.Product__c, new List<Question__c>{mapQuestionIdToQuestion.get(objAnswer.Question__c)})), mapQuestionIdToAnswer.put(objAnswer.Question__c, objAnswer)));	
         }
     }
     
@@ -133,34 +196,53 @@ public with sharing class TBN_OpportunityProductController
     */
     public void save()
     {
-        system.debug('======'+lstQuestions);
-        if(!lstQuestions.isEmpty())
-            update lstQuestions; 
+        system.debug('======'+lstWrapperProduct);
+        if(!lstWrapperProduct.isEmpty())
+        {
+        }
+            //update lstWrapperProduct; 
         //return new Pagereference('/'+opportunityId);
     }
     
     public void onPageLoad()
     {
-        for(Question__c objQus : [Select Id, (Select Id From Answers__r), Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: lstProductGroupId])
+        map<Id,Id> mapQuestionIdToAnswerId = new map<Id,Id>();
+        for(Answer__c objAnswer : [SELECT Id,
+        								  Question__c
+                                     From Answer__c 
+                                     WHERE Opportunity__c =: opportunityId
+                                       AND Product__c IN: mapProductIdToPGId.keyset()
+                                       AND Question__c IN: mapQuestionIdToQuestion.keyset()])
         {
-            if(objQus.Answers__r.isEmpty())
-            {
-            	lstAnswers.add(new Answer__c(Question__c = objQus.Id, Product__c = mapPGIdToPrdId.get(objQus.Product_Group__c), Opportunity__c = opportunityId));	
-            }
+            mapQuestionIdToAnswerId.put(objAnswer.Question__c,objAnswer.Id);
         }
         
-        for(Answer__c objAns : lstAnswers)
+        for(Question__c objQus : [Select Id, Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: mapProductIdToPGId.values()])
         {
-        	if(objAns.Id == null)
-        	{
-        		lstAnswerToInsert.add(objAns);
-        	}
-        	if(objAns.Answers__c == null || objAns.Answers__c == '')
-        		UnansweredQuestions = UnansweredQuestions+1;
-        	else
-        		AnsweredQuestions = AnsweredQuestions+1;	
+            if(mapQuestionIdToAnswerId.get(objQus.Id) == null)
+            {
+            	lstAnswerToInsert.add(new Answer__c(Question__c = objQus.Id, Product__c = mapPGIdToPrdId.get(objQus.Product_Group__c), Opportunity__c = opportunityId));
+            }
         }
         insert lstAnswerToInsert;
+        
+        
+        for(Answer__c objAnswer : [SELECT Id,
+        								  Answers__c
+                                     From Answer__c 
+                                     WHERE Opportunity__c =: opportunityId
+                                       AND Product__c IN: mapProductIdToPGId.keyset()
+                                       AND Question__c IN: mapQuestionIdToQuestion.keyset()])
+        {
+        	if(objAnswer.Answers__c == null || objAnswer.Answers__c == '')
+        	{
+        		UnansweredQuestions = UnansweredQuestions+1;
+        	}
+        	else
+        	{
+        		AnsweredQuestions = AnsweredQuestions+1;
+        	}	
+        }
        	
     }
     

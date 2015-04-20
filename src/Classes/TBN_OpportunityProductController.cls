@@ -1,14 +1,14 @@
 /**
 * \arg ClassName      : TBN_OpportunityProductController
 * \arg CreatedOn      : 13/April/2015
-* \arg LastModifiedOn : 17/April/2015
+* \arg LastModifiedOn : 18/April/2015
 * \arg CreatededBy    : Akshansh
 * \arg ModifiedBy     : 
 * \arg Description    : This class is the controller for TBN_OpportunityProduct Page and is used to display questions ans answers based on product group.
 */
 public with sharing class TBN_OpportunityProductController 
 {
-    /* Start - Page Variables */
+    /* Start - Page Variables */  
     public Integer AnsweredQuestions    				{get;set;} // The variable will store the Count of answered questions
     public Integer UnansweredQuestions  				{get;set;} // The variable will store the Count of unanswered questions
     public list<WrapperQuestionAnswer> lstWrapperQA  	{get;set;} // The list of wrapper class to store questions and answers
@@ -16,10 +16,7 @@ public with sharing class TBN_OpportunityProductController
     /* End - Page Variables */
     
     /* Start - Class Variables*/
-    list<WrapperQuestionAnswer> lstQAToUpdate =	new list<WrapperQuestionAnswer>(); 
     list<Question__c> lstQuestions = new list<Question__c>();
-    list<Answer__c> lstAnswersToUpdate = new list<Answer__c>();
-    list<Answer__c> lstAnswerToInsert = new list<Answer__c>(); 
     map<Id,Id> mapProductIdToPGId = new map<Id,Id>();
     map<Id,List<Id>> mapPGIdTolstOfPrdId = new map<Id,List<Id>>();
     map<Id,String> mapProdIdToProdName = new map<Id,String>();
@@ -43,7 +40,7 @@ public with sharing class TBN_OpportunityProductController
        	public List<WrapperQuestionAnswer> lstWrapperQuesAns			{get;set;}
         
         /* Start - Constructor */
-        public WrapperProduct(String strProductName, List<WrapperQuestionAnswer> lstWrapperQuesAns)
+        public WrapperProduct(String strProductName, List<WrapperQuestionAnswer> lstWrapperQuesAns)  
         {
             this.strProductName = strProductName;
             this.lstWrapperQuesAns = lstWrapperQuesAns;
@@ -65,17 +62,15 @@ public with sharing class TBN_OpportunityProductController
         /* End - Constructor */
     }
     
-    
-    
     /* Start - Constructor */
     public TBN_OpportunityProductController(ApexPages.StandardController stdController)
     {
         opportunityId = stdController.getId();
         initialize();
-        ShowQuestions();
-        //onPageLoad();
+        fillmap();
     }
     /* End - Constructor */
+    
     
     /*
         @MethodName: initialize
@@ -90,12 +85,7 @@ public with sharing class TBN_OpportunityProductController
         lstWrapperProduct = new list<WrapperProduct>();
     }  
     
-    /*
-        * MethodName   : getShowQuestions
-        * Param        : 
-        * Description  : This method is used to validate whether the user belongs to coverage team members of Account or not
-    */
-    public void ShowQuestions()
+    private void fillmap()
     {
         for(OpportunityLineItem objOLI : [SELECT Product2Id, 
         										 Product2.Name, 
@@ -114,11 +104,10 @@ public with sharing class TBN_OpportunityProductController
             	mapPGIdTolstOfPrdId.put(objOLI.Product2.Product_Group__c , new list<Id>{objOLI.Product2Id});
             }
         }
-        
         for(Question__c objQuestion : [SELECT Id, 
         									  Questions_for_Picklist__c, 
         									  Question__c, 
-        									  Question_Type__c, 
+        									  RecordType.Name,
         									  Product_Group__c 
         							     From Question__c 
         							    WHERE Product_Group__c IN:mapPGIdTolstOfPrdId.keyset()])
@@ -131,24 +120,35 @@ public with sharing class TBN_OpportunityProductController
         									From Product_Group__c 
         								   where Id IN:mapPGIdTolstOfPrdId.keyset()])
         {
-        	lstQuestions.addAll(objPrdGrp.Questions__r);
-        	for(Question__c objQuestion : objPrdGrp.Questions__r)
+        	lstQuestions.addAll(objPrdGrp.Questions__r);  
+        	if(!objPrdGrp.Questions__r.isEmpty())
         	{
-	        	if(mapPGIdTolstOfQusId.containsKey(objPrdGrp.Id))
-	        	{
-	        		mapPGIdTolstOfQusId.get(objPrdGrp.Id).add(objQuestion.Id);	
-	        	}
-	        	else
-	        	{
-	        		mapPGIdTolstOfQusId.put(objPrdGrp.Id , new list<Id>{objQuestion.Id});
-	        	}
-        	}
-        	for(Id ProductId : mapPGIdTolstOfPrdId.get(objPrdGrp.Id))
-        	{
-        		mapPrdIdTolstOfQusId.put(ProductId, mapPGIdTolstOfQusId.get(objPrdGrp.Id));
+            	for(Question__c objQuestion : objPrdGrp.Questions__r)
+            	{
+    	        	if(mapPGIdTolstOfQusId.containsKey(objPrdGrp.Id))
+    	        	{
+    	        		mapPGIdTolstOfQusId.get(objPrdGrp.Id).add(objQuestion.Id);	
+    	        	}
+    	        	else
+    	        	{
+    	        		mapPGIdTolstOfQusId.put(objPrdGrp.Id , new list<Id>{objQuestion.Id});
+    	        	}
+            	}
+            	for(Id ProductId : mapPGIdTolstOfPrdId.get(objPrdGrp.Id))
+            	{
+            		mapPrdIdTolstOfQusId.put(ProductId, mapPGIdTolstOfQusId.get(objPrdGrp.Id));
+            	}
         	}
         }
-        
+    }
+    
+    /*
+        * MethodName   : ShowQuestions
+        * Param        : 
+        * Description  : This method is used to validate whether the user belongs to coverage team members of Account or not
+    */
+    public void ShowQuestions()
+    {
         for(Answer__c objAnswer : [SELECT Id,
 										  Question__c,
                                           Product__c,
@@ -174,17 +174,12 @@ public with sharing class TBN_OpportunityProductController
         	lstWrapperProduct.add(new WrapperProduct(mapProdIdToProdName.get(ProductId), mapPrdIdTolstWrapperQA.get(ProductId)));
         }
 		
-        for(Question__c objQus : [Select Id, Question_Type__c, Questions_for_Picklist__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: mapPGIdTolstOfPrdId.keyset()])
+        for(Question__c objQus : [Select Id, RecordType.Name, Questions_for_Picklist__c, Question__c, Product_Group__c From Question__c WHERE Product_Group__c IN: mapPGIdTolstOfPrdId.keyset()])
         {
             mapQuestionIdToQuestion.put(objQus.Id , objQus);
         }
     }
-    
-    /*public List<SelectOption> getOptionList()
-    {
-        return new List<Selectoption>{new Selectoption('--None--','--None--'), new Selectoption('Easy','Easy'), new Selectoption('Normal','Normal'), new Selectoption('Difficult','Difficult')};
-    }*/
-    
+
     public List<Selectoption> getIsSelectedRadio()
     {
         return new List<Selectoption>{new Selectoption('Yes','Yes'), new Selectoption('No','No')};
@@ -197,22 +192,37 @@ public with sharing class TBN_OpportunityProductController
     */
     public void save()
     {
+        list<WrapperQuestionAnswer> lstQAToUpdate =	new list<WrapperQuestionAnswer>(); 
+        set<Answer__c> setAnswers = new set<Answer__c>();
+        list<Answer__c> lstAnswersToUpdate = new list<Answer__c>();
         if(!lstWrapperProduct.isEmpty())
         {
         	for(WrapperProduct objWrapperProduct : lstWrapperProduct)
         	{
+        		if(objWrapperProduct.lstWrapperQuesAns != null)
         		lstQAToUpdate.addAll(objWrapperProduct.lstWrapperQuesAns);
         	}
         }
-        
         for(WrapperQuestionAnswer objWrapperQA : lstQAToUpdate)	
     	{
-    		lstAnswersToUpdate.add(objWrapperQA.objAnswer);
+    		setAnswers.add(objWrapperQA.objAnswer);
     	}
-    	if(!lstAnswersToUpdate.isEmpty())
+    	if(!setAnswers.isEmpty())
+    	{
+			lstAnswersToUpdate.addAll(setAnswers);    		
     		update lstAnswersToUpdate;
+    	}
     }
     
+    /*
+        * MethodName   : onPageLoad
+        * Param        : 
+        * Description  : This method will call on pageload and is used to call ShowQuestions function 
+    */
+    public void dummy()
+    {
+        ShowQuestions();
+    }
     /*
         * MethodName   : onPageLoad
         * Param        : 
@@ -220,49 +230,57 @@ public with sharing class TBN_OpportunityProductController
     */
     public void onPageLoad()
     {
+        UnansweredQuestions = 0;
+        AnsweredQuestions = 0;
+        list<Answer__c> lstAnswerToInsert = new list<Answer__c>(); 
         set<string> setUniqueAns = new set<string>();
-        for(Answer__c objAnswer : [SELECT Id,
-        								  Question__c,
-        								  Product__c,
-        								  Opportunity__c
-                                     From Answer__c 
-                                    WHERE Opportunity__c =: opportunityId
-                                      AND Product__c IN: mapProductIdToPGId.keyset()
-                                      AND Question__c IN: mapQuestionIdToQuestion.keyset()])
+        try
         {
-            setUniqueAns.add(objAnswer.Question__c + '_' + objAnswer.Product__c + '_' + objAnswer.Opportunity__c);
-        }
-        
-        for(Id productId : mapPrdIdTolstOfQusId.keyset())
-        {
-        	for(Question__c objQus : [Select Id, Question_Type__c, Question__c, Product_Group__c From Question__c WHERE Id IN: mapPrdIdTolstOfQusId.get(productId)])
-        	{
-            	if(!setUniqueAns.contains(objQus.Id + '_' + productId + '_'+ opportunityId))	
+            for(Answer__c objAnswer : [SELECT Id,
+            								  Question__c,
+            								  Product__c,
+            								  Opportunity__c
+                                         From Answer__c 
+                                        WHERE Opportunity__c =: opportunityId
+                                          AND Product__c IN: mapProductIdToPGId.keyset()
+                                          AND Question__c IN: mapQuestionIdToQuestion.keyset()])
+            {
+                setUniqueAns.add(objAnswer.Question__c + '_' + objAnswer.Product__c + '_' + objAnswer.Opportunity__c);
+            }
+            
+            for(Id productId : mapPrdIdTolstOfQusId.keyset())
+            {
+            	for(Question__c objQus : [Select Id, Question__c, RecordType.Name, Product_Group__c From Question__c WHERE Id IN: mapPrdIdTolstOfQusId.get(productId)])
             	{
-            		lstAnswerToInsert.add(new Answer__c(Question__c = objQus.Id, Product__c = productId, Opportunity__c = opportunityId));
+                	if(!setUniqueAns.contains(objQus.Id + '_' + productId + '_'+ opportunityId) )	
+                	{
+                		lstAnswerToInsert.add(new Answer__c(Question__c = objQus.Id, Product__c = productId, Opportunity__c = opportunityId));
+                	}
             	}
-        	}
-        	
+            }
+            insert lstAnswerToInsert;	
+            
+            for(Answer__c objAnswer : [SELECT Id,
+            								  Answers__c
+                                         From Answer__c 
+                                        WHERE Opportunity__c =: opportunityId
+                                          AND Product__c IN: mapPrdIdTolstOfQusId.keyset()
+                                          AND Question__c IN: lstQuestions])
+            {
+            	if(objAnswer.Answers__c == null || objAnswer.Answers__c == '')
+            	{
+            		UnansweredQuestions = UnansweredQuestions+1;
+            	}
+            	else
+            	{
+            		AnsweredQuestions = AnsweredQuestions+1;
+            	}	
+            }
         }
-        insert lstAnswerToInsert;	
-        
-        for(Answer__c objAnswer : [SELECT Id,
-        								  Answers__c
-                                     From Answer__c 
-                                    WHERE Opportunity__c =: opportunityId
-                                      AND Product__c IN: mapPrdIdTolstOfQusId.keyset()
-                                      AND Question__c IN: lstQuestions])
+        catch(Exception ex)
         {
-        	if(objAnswer.Answers__c == null || objAnswer.Answers__c == '')
-        	{
-        		UnansweredQuestions = UnansweredQuestions+1;
-        	}
-        	else
-        	{
-        		AnsweredQuestions = AnsweredQuestions+1;
-        	}	
+            System.debug('=================='+ex.getMessage()+'=============='+ex.getLineNumber());
         }
-       	
     }
     
 }

@@ -1,5 +1,14 @@
 <apex:page standardController="Opportunity" extensions="TBN_OpportunityProductController" sidebar="false" action="{!onPageLoad}">
-	<apex:form >
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+	<script>
+		$(document).ready(function()
+		{
+		    reloadAF();
+		});
+	</script>
+	<apex:form id="formId">
+		<c:LoadingSymbol />
+	    <apex:actionFunction action="{!dummy}" name="reloadAF" rerender="formId" status="actionStatus"/>
 		<div style="width:100%;border:1px solid black;padding-top:10px;padding-bottom:10px;">
 	    	<center style="border-bottom:1px solid black;padding-top:10px;padding-bottom:10px;font-size:16px;font-weight:700;">Questions and Answers related to products</center>
 	        <div style="padding-top:10px;padding-bottom:10px;padding-left:10px;border-bottom:1px solid black;margin-bottom:10px;">
@@ -11,16 +20,25 @@
 	        <apex:repeat value="{!lstWrapperProduct}" var="product">
 	        	<apex:outputText value="{!product.strProductName}" style="margin: 5px 73px;font-weight:700;font-size: 17px;"/>
             	<div style="margin: 5px 43px;padding:5px 30px;border:1px solid black;width:50%;border-radius: 35px;">
+            	    <div class="pbBody" style="width:100%; display:{!IF(product.lstWrapperQuesAns == null, '', 'none')}">
+            	        <table class="list" border="0" cellspacing="0" cellpadding="0" width="100%" border-radius="8px">
+            	            <tbody>
+            	                <tr class="headerRow">
+            	                    <th scope="col" class="noRowsHeader" style="">No records to display</th>
+        	                    </tr>
+                            </tbody>
+                        </table>
+                    </div>
+            	    
                 	<apex:repeat value="{!product.lstWrapperQuesAns}" var="QA">
                     	<div style="margin-top:5px;margin-bottom:1px; margin-left:-6px;margin-right:5px;width:100%;padding:10px 5px;">
                             <table style="width:100%;">
                                <tr>
                                    <td style="width: 11%;"><label>Question : </label></td>
                                    <td style="width:100%;"> 
-                                    	<apex:outputField value="{!QA.objQuestion.Question__c}" rendered="{!QA.objQuestion.Question_Type__c == 'Paragraph'}"/>
-                                    	<apex:outputField value="{!QA.objQuestion.Question__c}" rendered="{!QA.objQuestion.Question_Type__c == null}"/>
-                                    	<apex:outputField value="{!QA.objQuestion.Question__c}" rendered="{!QA.objQuestion.Question_Type__c == 'Yes/No'}"/>
-                                    	<apex:outputField value="{!QA.objQuestion.Questions_for_Picklist__c}" rendered="{!QA.objQuestion.Question_Type__c == 'Picklist'}"/>
+                                    	<apex:outputField value="{!QA.objQuestion.Question__c}" rendered="{!QA.objQuestion.RecordType.Name == 'Paragraph'}"/>
+                                    	<apex:outputField value="{!QA.objQuestion.Question__c}" rendered="{!QA.objQuestion.RecordType.Name == 'Radio'}"/>
+                                    	<apex:outputField value="{!QA.objQuestion.Questions_for_Picklist__c}" rendered="{!QA.objQuestion.RecordType.Name == 'Picklist'}"/>
                                     </td>
                                  </tr>
                             </table>
@@ -32,22 +50,21 @@
                                        <label style="padding-right:10px;"> Answer  </label>
                                     </td>
                                     <td style="width:100%;"> 
-                                    	<apex:inputField value="{!QA.objAnswer.Answers__c}" style="resize: none;padding-right: 110px;" rendered="{!QA.objQuestion.Question_Type__c == 'Paragraph'}"/>
-                                        <apex:inputField value="{!QA.objAnswer.Answers__c}" style="resize: none;padding-right: 110px;" rendered="{!QA.objQuestion.Question_Type__c == null}"/>
-                                        <apex:selectRadio value="{!QA.objAnswer.Answers__c}"  rendered="{!QA.objQuestion.Question_Type__c == 'Yes/No'}" label="Answer For Radio"> 
+                                    	<apex:inputField value="{!QA.objAnswer.Answers__c}" style="resize: none;padding-right: 110px;" rendered="{!QA.objQuestion.RecordType.Name == 'Paragraph'}"/>
+                                        <apex:selectRadio value="{!QA.objAnswer.Answers__c}"  rendered="{!QA.objQuestion.RecordType.Name == 'Radio'}" label="Answer For Radio"> 
                                            <apex:selectOptions value="{!IsSelectedRadio}"/>        
                                         </apex:selectRadio>
 
-                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.Question_Type__c == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'How is you Hair growth?')}" multiselect="false" size="1" >	 
+                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.RecordType.Name == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'How is you Hair growth?')}" multiselect="false" size="1" >	 
                                         	<apex:selectOption itemValue="slow" itemLabel="Slow"/>
 				            	  			<apex:selectOption itemValue="fast" itemLabel="Fast"/>
 				            				<apex:selectOption itemValue="normal" itemLabel="Normal"/>
                                         </apex:selectList>
-                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.Question_Type__c == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'Which shampoo You are using?')}" multiselect="false" size="1" >	 
+                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.RecordType.Name == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'Which shampoo You are using?')}" multiselect="false" size="1" >	 
                                         	<apex:selectOption itemValue="antihairfall" itemLabel="AntiHairFall"/>
 				            	  			<apex:selectOption itemValue="coolmenthol" itemLabel="CoolMenthol"/>
                                         </apex:selectList> 
-                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.Question_Type__c == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'Which Soap u mostly prefer')}" multiselect="false" size="1" >	 
+                                        <apex:selectList value="{!QA.objAnswer.Answers__c}" rendered="{!AND(QA.objQuestion.RecordType.Name == 'Picklist',QA.objQuestion.Questions_for_Picklist__c == 'Which Soap u mostly prefer')}" multiselect="false" size="1" >	 
                                         	<apex:selectOption itemValue="dettol" itemLabel="Dettol"/>
 						            	  	<apex:selectOption itemValue="lifeboy" itemLabel="Lifeboy"/>
 						            		<apex:selectOption itemValue="cinthol" itemLabel="Cinthol"/>
@@ -60,7 +77,7 @@
                 </div>
 	        </apex:repeat>
             <div style="text-align:center;margin:20px;">
-				<apex:commandButton value="Save" action="{!save}" style="margin:auto;width:100px;"/>
+				<apex:commandButton value="Save" action="{!save}" style="margin:auto;width:100px;" rerender="formId" status="actionStatus"/>
             </div>
 		</div>
     </apex:form>
